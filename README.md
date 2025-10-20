@@ -70,6 +70,20 @@
 
 ---
 
+## **Evaluation**
+
+- **Threshold: 80 점 이상일 때, Accept**
+  ⇒ 근거: https://www.linkedin.com/pulse/psis-100-point-self-assessment-scorecard-qualifying-your-dahotre
+  인도 최대 VC 네트워크 PSI의 100점 만점 자체평가 스코어카드에서는 80점 이상을 VC 펀딩 자격으로 제시합니다.
+- 가중치 설정:
+  - 시장성: 40%
+  - 기술력: 25%
+  - 시장 경쟁력: 35%4
+  ⇒ 근거: https://angelcapitalassociation.org/blog/blog-scorecard-valuation-methodology-rev-2019-establishing-the-valuation-of-pre-revenue-start-up-companies/
+  Scorecard Valuation Method (Bill Payne, 2009)에서 필드당 구체적인 수치를 제안합니다.
+
+---
+
 ## Why We Predefined the Startup Candidates?
 
 > “Agent가 직접 유망 스타트업을 찾게 하지 않고, 왜 우리가 사전 정의한 리스트로 시작했는가?”
