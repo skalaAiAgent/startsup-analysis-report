@@ -18,21 +18,19 @@ from agents.judge_agent import JudgeAgent
 from agents.report_agent import ReportAgent
 
 # State import
-from states.market_state import MarketState
-from states.tech_state import TechState
-from states.comparison_state import ComparisonState
-from states.final_state import FinalState
-from states.workflow_state import WorkflowState
+from state.market_state import MarketState
+from state.tech_state import TechState
+from state.comparison_state import ComparisonState
+from state.final_state import FinalState
+from state.workflow_state import WorkflowState
 
 
 # ===== 상수 정의 =====
-
 COMPANIES = ["트립소다", "트립비토즈", "하이어플레이스", "리브애니웨어", "어딩"]
 REPORTS_DIR = "reports"
 
 
 # ===== 유틸리티 함수 =====
-
 def ensure_reports_dir():
     """reports 디렉토리 생성"""
     if not os.path.exists(REPORTS_DIR):
@@ -80,7 +78,6 @@ Reject 이유: {reason}
 
 
 # ===== 병렬 분석 실행 (기존 함수) =====
-
 async def run_market_agent(company_name: str) -> MarketState:
     """MarketAgent 실행"""
     print(f"  [MarketAgent] 시장 분석 시작...")
@@ -143,7 +140,6 @@ async def analyze_company_parallel(company_name: str) -> FinalState:
 
 
 # ===== LangGraph 노드 함수들 =====
-
 def analyze_node(state: WorkflowState) -> WorkflowState:
     """분석 노드: 3개 Agent 병렬 실행"""
     try:
