@@ -32,13 +32,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 # EnsembleRetriever 경로 호환
-try:
-    from langchain.retrievers import EnsembleRetriever          # langchain 0.2.x
-except Exception:
-    try:
-        from langchain_classic.retrievers import EnsembleRetriever
-    except Exception:
-        from langchain.retrievers.ensemble import EnsembleRetriever
+from langchain_classic.retrievers import EnsembleRetriever
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
