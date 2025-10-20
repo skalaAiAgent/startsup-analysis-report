@@ -6,6 +6,8 @@
 
 “여행 산업의 AI 스타트업 **기술 경쟁력, 시장 기회, 경쟁사 대비 위치**를 바탕으로 **투자 판단 보고서 자동생성”**
 
+---
+
 ## Why the Travel Domain?
 
 > “왜 여행 도메인을 설정했는가?”
@@ -39,6 +41,8 @@
 
 <img width="456" height="605" alt="Image" src="https://github.com/user-attachments/assets/b9ac9198-223f-40e7-8e1a-2f21c345ee53" />
 
+---
+
 ## Agents
 
 | Agent                | 역할                                 | 주요 입력                       | 주요 출력       |
@@ -62,6 +66,8 @@
 `score` |
 | **Report_Agent** | **최종 보고서 생성** | `WorkflowState.judgment == True`, `FinalState` | `WorkflowState.report_path` |
 
+---
+
 ## Features
 
 - **PDF 기반 RAG 자동화**
@@ -79,8 +85,6 @@
 
 ---
 
----
-
 ## Why We Predefined the Startup Candidates?
 
 > “Agent가 직접 유망 스타트업을 찾게 하지 않고, 왜 우리가 사전 정의한 리스트로 시작했는가?”
@@ -92,8 +96,8 @@
 - 이로 인해 RAG Agent가 후보를 탐색하기엔 **판단 기준이 정리되어 있지 않음**
   - 어떤 기업을 대상으로 분석해야 할지 정의가 어려움
   - 정량 비교를 수행할 수 있는 최소 요건도 갖춰지지 않음
-  → 그래서 저희는 **실험의 안정성과 비교 가능성을 확보**하기 위해 **검증된 5개 스타트업 후보를 수작업으로 큐레이션**한 뒤 평가 Agent를 설계했습니다.
-  [[출처: 이데일리 「관광 스타트업의 눈물」, 2024]](https://www.edaily.co.kr/News/Read?newsId=02076246642173184&mediaCodeNo=257#:~:text=%EC%9D%BC%EA%B4%80%EB%90%98%EC%A7%80%20%EC%95%8A%EC%9D%80%20%EA%B8%B0%EC%A4%80%EC%9C%BC%EB%A1%9C%20%EA%B8%B0%EC%97%85%EC%9D%84%20%EC%84%A0%EB%B3%84%ED%95%B4,%EC%A7%80%EC%9B%90%ED%95%98%EA%B3%A0%20%EC%9E%88%EB%8B%A4%EB%8A%94%20%EA%B2%83%EC%9D%B4%EB%8B%A4)
+    → 그래서 저희는 **실험의 안정성과 비교 가능성을 확보**하기 위해 **검증된 5개 스타트업 후보를 수작업으로 큐레이션**한 뒤 평가 Agent를 설계했습니다.
+    [[출처: 이데일리 「관광 스타트업의 눈물」, 2024]](https://www.edaily.co.kr/News/Read?newsId=02076246642173184&mediaCodeNo=257#:~:text=%EC%9D%BC%EA%B4%80%EB%90%98%EC%A7%80%20%EC%95%8A%EC%9D%80%20%EA%B8%B0%EC%A4%80%EC%9C%BC%EB%A1%9C%20%EA%B8%B0%EC%97%85%EC%9D%84%20%EC%84%A0%EB%B3%84%ED%95%B4,%EC%A7%80%EC%9B%90%ED%95%98%EA%B3%A0%20%EC%9E%88%EB%8B%A4%EB%8A%94%20%EA%B2%83%EC%9D%B4%EB%8B%A4)
 
 ---
 
@@ -187,8 +191,6 @@ startsup-analysis-report/
 | **Embedding**    | OllamaEmbeddings `(model="nomic-embed-text")`                                               |
 | **Vector Store** | ChromaDB                                                                                    |
 | **Data Source**  | `기술요약_전체_기업_인터뷰.pdf`, `시장분석_스타트업_시장전략_및_생태계.pdf`, `기업비교.pdf` |
-
----
 
 ---
 
