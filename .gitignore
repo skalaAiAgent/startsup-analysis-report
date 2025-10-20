@@ -1,0 +1,11 @@
+.env
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ChromaDB
+chroma_db/
+.chroma/
