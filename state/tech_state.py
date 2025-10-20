@@ -1,5 +1,5 @@
-from typing import Dict, List, TypedDict
-from xml.dom.minidom import Document
+from typing import TypedDict, List, Dict
+from langchain.schema import Document
 
 
 class TechState(TypedDict):
