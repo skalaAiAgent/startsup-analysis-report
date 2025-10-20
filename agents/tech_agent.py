@@ -18,25 +18,30 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
 from langchain_core.prompts import ChatPromptTemplate
+
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 from tavily import TavilyClient
 
+from state.tech_state import TechState
+
 load_dotenv()
 
 
-class TechState(TypedDict):
-    """에이전트의 상태를 정의하는 클래스"""
+# ========== TypedDict 정의 ==========
+class WorkflowState(TypedDict):
+    """LangGraph 워크플로우 상태"""
     startup_names: List[str]
     current_startup: str
     web_data: str
     retrieved_docs: List[Document]
-    tech_evaluations: List[Dict]
+    tech_evaluations: List[Dict]  # List[TechState]
     processing_index: int
     vectorstore_ready: bool
 
+
+# ========== TechAgent 클래스 ==========
 
 class TechAgent:
     """
@@ -44,14 +49,17 @@ class TechAgent:
 
     사용법:
         agent = TechAgent(startups_to_evaluate="어딩")
-        result = agent.get_tech_result()
+        result = agent.get_tech_result()  # TechState 반환
+        
+        print(result['company_name'])
+        print(result['technology_score'])
+        print(result['category_scores'])
     """
 
-    def __init__(self, startups_to_evaluate: str | List[str], pdf_data_path: str = "../data"):
+    def __init__(self, startups_to_evaluate: str | List[str]):
         """
         Args:
             startups_to_evaluate: 평가할 스타트업 이름 (문자열 또는 리스트)
-            pdf_data_path: PDF 데이터 경로 (기본값: 프로젝트 루트의 data 폴더)
         """
         # 스타트업 리스트 설정
         if isinstance(startups_to_evaluate, str):
@@ -59,25 +67,21 @@ class TechAgent:
         else:
             self.startup_names = startups_to_evaluate
 
-        # PDF 데이터 경로 설정
-        if pdf_data_path is None:
-            # 프로젝트 루트의 data 폴더 사용
-            self.pdf_data_path = Path(ROOT_DIR).parent / "data"
-        else:
-            self.pdf_data_path = Path(pdf_data_path)
-
+        # 프로젝트 루트 경로 계산 (agents 폴더 기준)
+        # agents/tech_agent.py -> agents -> root
+        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
+        
         # 모델 초기화
         self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
         self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
         # ChromaDB 경로
-        self.chroma_persist_dir = "../rag/tech"
+        self.chroma_persist_dir = os.path.join(root, "rag", "tech")
         self.chroma_collection_name = "startup_tech_db"
 
         # VectorStore 및 Retriever 초기화
         self.vectorstore = None
         self.ensemble_retriever = None
-        self.pdf_documents = None
 
         # Workflow 초기화
         self.app = None
@@ -86,39 +90,54 @@ class TechAgent:
         print(f"TechAgent 초기화")
         print(f"{'='*60}")
         print(f"평가 대상: {', '.join(self.startup_names)}")
-        print(f"PDF 경로: {self.pdf_data_path}")
+        print(f"ChromaDB 경로: {self.chroma_persist_dir}")
         print(f"{'='*60}\n")
 
-    def _load_pdf_documents(self) -> List[Document]:
-        """PDF 문서들을 로드하고 청킹"""
+    def _load_pdf_for_bm25(self) -> List[Document]:
+        """
+        BM25 Retriever용 PDF 문서 로드
+        (기존 ChromaDB 인덱스에서 데이터를 읽어오지 않고, PDF를 직접 로드)
+        """
+        # agents/tech_agent.py -> agents -> root
+        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
+        data_dir = os.path.join(root, "data")
+        
+        # indexer와 동일한 파일 목록
+        pdf_files = [
+            os.path.join(data_dir, "기술요약_전체_기업_인터뷰.pdf"),
+            os.path.join(data_dir, "시장성분석_스타트업_시장전략_및_생태계.pdf"),
+            os.path.join(data_dir, "기업비교.pdf")
+        ]
+        
+        print("PDF 문서 로드 중 (BM25 인덱스용)...")
         all_documents = []
-
-        pdf_files = list(self.pdf_data_path.glob("*.pdf"))
-        print(f"발견된 PDF 파일: {len(pdf_files)}개")
-
+        
         for pdf_file in pdf_files:
+            if not os.path.exists(pdf_file):
+                continue
+                
             try:
-                print(f"  로딩 중: {pdf_file.name}")
                 loader = PyPDFLoader(str(pdf_file))
                 documents = loader.load()
-
+                
                 for doc in documents:
-                    doc.metadata["source_file"] = pdf_file.name
+                    doc.metadata["source_file"] = os.path.basename(pdf_file)
                     doc.metadata["source_type"] = "pdf"
-
+                
                 all_documents.extend(documents)
             except Exception as e:
-                print(f"  PDF 로드 실패 ({pdf_file.name}): {e}")
-
+                print(f"  PDF 로드 실패 ({os.path.basename(pdf_file)}): {e}")
+        
+        # 청킹
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
             length_function=len,
         )
-
+        
         split_documents = text_splitter.split_documents(all_documents)
-        print(f"총 {len(split_documents)}개의 청크 생성\n")
-
+        print(f"  ✓ {len(split_documents)}개의 청크 생성 완료\n")
+        
         return split_documents
 
     def _initialize_vectorstore(self):
@@ -127,37 +146,32 @@ class TechAgent:
         print(f"VectorStore 초기화")
         print(f"{'='*60}\n")
 
-        # 기존 ChromaDB 확인
-        if os.path.exists(self.chroma_persist_dir) and os.path.isdir(self.chroma_persist_dir):
-            print("📂 기존 VectorStore 발견 - 로드 중...")
-            self.vectorstore = Chroma(
-                collection_name=self.chroma_collection_name,
-                embedding_function=self.embeddings,
-                persist_directory=self.chroma_persist_dir
+        # ChromaDB 존재 확인
+        if not os.path.exists(self.chroma_persist_dir) or not os.path.isdir(self.chroma_persist_dir):
+            raise FileNotFoundError(
+                f"ChromaDB 인덱스가 존재하지 않습니다: {self.chroma_persist_dir}\n"
+                f"먼저 indexer_build.py를 실행하여 인덱스를 생성하세요:\n"
+                f"  python rag/tech/indexer_build.py --force"
             )
-            print("✓ VectorStore 로드 완료\n")
-            print("PDF 문서 로드 중 (BM25 인덱스용)...")
-            self.pdf_documents = self._load_pdf_documents()
-        else:
-            print("🆕 기존 VectorStore 없음 - 새로 생성")
-            print("PDF 문서 로드 중...")
-            self.pdf_documents = self._load_pdf_documents()
-
-            print("VectorStore 생성 중 (임베딩 생성 - 수 분 소요 가능)...")
-            self.vectorstore = Chroma.from_documents(
-                documents=self.pdf_documents,
-                embedding=self.embeddings,
-                collection_name=self.chroma_collection_name,
-                persist_directory=self.chroma_persist_dir
-            )
-            print("✓ VectorStore 생성 완료\n")
+        
+        # 기존 ChromaDB 로드
+        print("📂 기존 VectorStore 로드 중...")
+        self.vectorstore = Chroma(
+            collection_name=self.chroma_collection_name,
+            embedding_function=self.embeddings,
+            persist_directory=self.chroma_persist_dir
+        )
+        print("✓ VectorStore 로드 완료\n")
+        
+        # BM25용 PDF 문서 로드
+        pdf_documents = self._load_pdf_for_bm25()
 
         # EnsembleRetriever 구성
         print(f"{'='*60}")
         print(f"EnsembleRetriever 구성 중...")
         print(f"{'='*60}\n")
 
-        bm25_retriever = BM25Retriever.from_documents(self.pdf_documents)
+        bm25_retriever = BM25Retriever.from_documents(pdf_documents)
         bm25_retriever.k = 5
 
         semantic_retriever = self.vectorstore.as_retriever(
@@ -252,7 +266,7 @@ class TechAgent:
     def _build_workflow(self):
         """LangGraph 워크플로우 구성"""
 
-        def select_next_startup(state: TechState) -> TechState:
+        def select_next_startup(state: WorkflowState) -> WorkflowState:
             """다음 평가할 스타트업 선택"""
             idx = state.get("processing_index", 0)
 
@@ -264,27 +278,27 @@ class TechAgent:
 
             return state
 
-        def crawl_web_data(state: TechState) -> TechState:
+        def crawl_web_data(state: WorkflowState) -> WorkflowState:
             """웹에서 스타트업 정보 크롤링"""
             startup_name = state["current_startup"]
             web_data = self._crawl_startup_info(startup_name, max_results=5)
             state["web_data"] = web_data
             return state
 
-        def retrieve_tech_info(state: TechState) -> TechState:
+        def retrieve_tech_info(state: WorkflowState) -> WorkflowState:
             """PDF 문서에서 관련 기술 정보 검색"""
             startup_name = state["current_startup"]
             query = f"{startup_name} AI 기술 혁신 스타트업 투자 평가 경쟁력"
 
             print(f"\nPDF 문서에서 관련 정보 검색 중...")
-            retrieved_docs = self.ensemble_retriever.get_relevant_documents(query)
+            retrieved_docs = self.ensemble_retriever.invoke(query)
 
             state["retrieved_docs"] = retrieved_docs
             print(f"검색 완료: {len(retrieved_docs)}개 문서 검색됨")
 
             return state
 
-        def evaluate_technology(state: TechState) -> TechState:
+        def evaluate_technology(state: WorkflowState) -> WorkflowState:
             """웹 데이터와 PDF 정보를 바탕으로 기술력 평가"""
             startup_name = state["current_startup"]
             web_data = state.get("web_data", "정보 없음")
@@ -292,7 +306,11 @@ class TechAgent:
             current_index = state.get("processing_index", 0)
 
             existing_evaluations = state.get("tech_evaluations", [])
-            existing_scores = [e['기술_점수'] for e in existing_evaluations if isinstance(e, dict)]
+            existing_scores = [
+                e.get('technology_score', 0) 
+                for e in existing_evaluations 
+                if isinstance(e, dict)
+            ]
 
             pdf_context = "\n\n".join([doc.page_content for doc in docs[:3]])
 
@@ -306,7 +324,7 @@ class TechAgent:
 ### ⚠️ 중요한 제약 조건 ⚠️
 이미 평가한 기업들의 점수: [{scores_str}]
 
-**필수**: 새로운 기술_점수는 위 점수들과 **최소 5점 이상 차이**가 나야 합니다.
+**필수**: 새로운 technology_score는 위 점수들과 **최소 5점 이상 차이**가 나야 합니다.
 - 이미 사용된 점수: {existing_scores}
 - 사용 금지 범위: {', '.join(f'{s}±4점' for s in existing_scores)}
 - 각 기업의 실제 강점과 약점을 반영하여 차별화된 점수를 부여하세요.
@@ -319,14 +337,14 @@ class TechAgent:
 ## 평가 기준 (단계별 평가):
 
 **1단계: 각 항목별 점수 산정**
-- 기술의 혁신성 (0-30점): AI 기술의 독창성, 차별화된 접근 방식
-- 기술의 완성도 (0-30점): 제품/서비스의 완성도, 실제 적용 사례
-- 시장 경쟁력 (0-20점): 경쟁사 대비 우위, 시장 포지셔닝
-- 특허/지식재산권 (0-10점): 특허, 논문, 기술 자산
-- 기술 확장 가능성 (0-10점): 스케일업 가능성, 다른 분야 적용
+- innovation (혁신성) (0-30점): AI 기술의 독창성, 차별화된 접근 방식
+- completeness (완성도) (0-30점): 제품/서비스의 완성도, 실제 적용 사례
+- competitiveness (경쟁력) (0-20점): 경쟁사 대비 우위, 시장 포지셔닝
+- patent (특허) (0-10점): 특허, 논문, 기술 자산
+- scalability (확장성) (0-10점): 스케일업 가능성, 다른 분야 적용
 
 **2단계: 총점 계산**
-위 5개 항목의 점수를 합산하여 최종 기술_점수를 도출하세요.
+위 5개 항목의 점수를 합산하여 최종 technology_score를 도출하세요.
 
 **중요**:
 - 기업마다 명확히 차별화된 점수를 부여하세요
@@ -344,64 +362,101 @@ class TechAgent:
 
 위 정보를 바탕으로 **단계별로 평가**하고 다음 JSON 형식으로 결과를 작성하세요:
 
+```json
 {{
-    "startup_name": "스타트업 이름",
-    "항목별_점수": {{
-        "혁신성": 점수 (0-30),
-        "완성도": 점수 (0-30),
-        "경쟁력": 점수 (0-20),
-        "특허": 점수 (0-10),
-        "확장성": 점수 (0-10)
+    "company_name": "스타트업 이름",
+    "category_scores": {{
+        "innovation": 점수 (0-30, 정수),
+        "completeness": 점수 (0-30, 정수),
+        "competitiveness": 점수 (0-20, 정수),
+        "patent": 점수 (0-10, 정수),
+        "scalability": 점수 (0-10, 정수)
     }},
-    "기술_점수": 총점 (0-100, 정수),
-    "기술_분석_근거": "각 항목별 점수 산정 이유를 구체적으로 설명. 혁신성, 완성도, 경쟁력, 특허, 확장성 각각에 대해 웹 정보를 인용하여 상세히 분석"
+    "technology_score": 총점 (0-100, 정수),
+    "technology_analysis_basis": "각 항목별 점수 산정 이유를 구체적으로 설명. 혁신성, 완성도, 경쟁력, 특허, 확장성 각각에 대해 웹 정보를 인용하여 상세히 분석"
 }}
+```
 
-**필수**: 기술_점수는 항목별_점수의 합과 일치해야 합니다.""")
+**필수**: 
+- technology_score는 category_scores의 합과 일치해야 합니다.
+- 반드시 유효한 JSON 형식으로 응답하세요.""")
             ])
 
+            # LLM 호출
             chain = eval_prompt | self.llm
-            response = chain.invoke({
-                "startup_name": startup_name,
-                "web_data": web_data[:2000],
-                "pdf_context": pdf_context[:3000],
-                "existing_scores_constraint": existing_scores_constraint
-            })
 
             try:
-                content = response.content
+                response = chain.invoke({
+                    "startup_name": startup_name,
+                    "web_data": web_data[:2000],
+                    "pdf_context": pdf_context[:3000],
+                    "existing_scores_constraint": existing_scores_constraint
+                })
+
+                content = response.content if hasattr(response, 'content') else str(response)
+                
+                # JSON 파싱
                 if "```json" in content:
                     content = content.split("```json")[1].split("```")[0]
                 elif "```" in content:
                     content = content.split("```")[1].split("```")[0]
 
-                evaluation = json.loads(content.strip())
+                evaluation_dict: TechState = json.loads(content.strip())
 
-                if "항목별_점수" in evaluation:
-                    item_scores = evaluation["항목별_점수"]
-                    calculated_total = sum(item_scores.values())
-                    reported_total = evaluation.get("기술_점수", calculated_total)
+                # 점수 합계 검증
+                category_scores = evaluation_dict.get("category_scores", {})
+                calculated_total = (
+                    category_scores.get("innovation", 0) +
+                    category_scores.get("completeness", 0) +
+                    category_scores.get("competitiveness", 0) +
+                    category_scores.get("patent", 0) +
+                    category_scores.get("scalability", 0)
+                )
+                
+                reported_total = evaluation_dict.get("technology_score", 0)
 
-                    if abs(calculated_total - reported_total) > 1:
-                        print(f"  ⚠️ 점수 불일치 감지 (보고: {reported_total}, 계산: {calculated_total}) - 재계산된 값 사용")
-                        evaluation["기술_점수"] = calculated_total
+                if abs(calculated_total - reported_total) > 1:
+                    print(f"  ⚠️ 점수 불일치 감지 (보고: {reported_total}, 계산: {calculated_total}) - 재계산된 값 사용")
+                    evaluation_dict["technology_score"] = calculated_total
 
-                print(f"평가 완료: {evaluation['기술_점수']}점")
+                print(f"✅ 평가 완료: {evaluation_dict['technology_score']}점")
+                print(f"  세부: innovation={category_scores.get('innovation', 0)}, "
+                      f"completeness={category_scores.get('completeness', 0)}, "
+                      f"competitiveness={category_scores.get('competitiveness', 0)}, "
+                      f"patent={category_scores.get('patent', 0)}, "
+                      f"scalability={category_scores.get('scalability', 0)}")
 
-                if "항목별_점수" in evaluation:
-                    scores_breakdown = ", ".join([f"{k}={v}" for k, v in evaluation["항목별_점수"].items()])
-                    print(f"  세부: {scores_breakdown}")
-
+            except json.JSONDecodeError as e:
+                print(f"❌ JSON 파싱 실패: {e}")
+                evaluation_dict: TechState = {
+                    "company_name": startup_name,
+                    "category_scores": {
+                        "innovation": 15,
+                        "completeness": 15,
+                        "competitiveness": 10,
+                        "patent": 5,
+                        "scalability": 5
+                    },
+                    "technology_score": 50,
+                    "technology_analysis_basis": f"평가 실패 (JSON 파싱 오류): {str(e)}"
+                }
             except Exception as e:
-                print(f"JSON 파싱 실패: {e}")
-                evaluation = {
-                    "startup_name": startup_name,
-                    "기술_점수": 50,
-                    "기술_분석_근거": f"평가 실패: {str(e)}"
+                print(f"❌ 평가 실패: {e}")
+                evaluation_dict: TechState = {
+                    "company_name": startup_name,
+                    "category_scores": {
+                        "innovation": 15,
+                        "completeness": 15,
+                        "competitiveness": 10,
+                        "patent": 5,
+                        "scalability": 5
+                    },
+                    "technology_score": 50,
+                    "technology_analysis_basis": f"평가 실패: {str(e)}"
                 }
 
             current_evaluations = state.get("tech_evaluations", [])
-            current_evaluations.append(evaluation)
+            current_evaluations.append(evaluation_dict)
             state["tech_evaluations"] = current_evaluations
             state["processing_index"] = current_index + 1
 
@@ -410,7 +465,7 @@ class TechAgent:
 
             return state
 
-        def check_completion(state: TechState) -> str:
+        def check_completion(state: WorkflowState) -> str:
             """모든 스타트업 평가 완료 여부 확인"""
             idx = state.get("processing_index", 0)
             total = len(state.get("startup_names", []))
@@ -421,7 +476,7 @@ class TechAgent:
                 return "end"
 
         # StateGraph 생성
-        workflow = StateGraph(TechState)
+        workflow = StateGraph(WorkflowState)
 
         # 노드 추가
         workflow.add_node("select_startup", select_next_startup)
@@ -456,16 +511,7 @@ class TechAgent:
         기술 평가 실행 및 결과 반환
 
         Returns:
-            TechState: 전체 평가 상태 딕셔너리
-            {
-                "startup_names": [...],
-                "current_startup": "...",
-                "web_data": "...",
-                "retrieved_docs": [...],
-                "tech_evaluations": [...],  # 각 스타트업별 평가 결과
-                "processing_index": int,
-                "vectorstore_ready": bool
-            }
+            TechState: 기술 평가 결과
         """
         # VectorStore 초기화 (아직 안 되어 있으면)
         if self.vectorstore is None:
@@ -476,7 +522,7 @@ class TechAgent:
             self._build_workflow()
 
         # 초기 상태 설정
-        initial_state = {
+        initial_state: WorkflowState = {
             "startup_names": self.startup_names,
             "current_startup": "",
             "web_data": "",
@@ -498,13 +544,23 @@ class TechAgent:
         print(f"전체 평가 완료")
         print(f"최종 평가 결과 수: {len(result['tech_evaluations'])}개")
         print(f"{'='*60}\n")
-        # TechState 전체를 반환
-        return result
-
-# 사용 예시
-if __name__ == "__main__":
-    # 단일 기업 평가
-    company_name = "어딩"
-    agent = TechAgent(startups_to_evaluate=company_name)
-    result = agent.get_tech_result()
-    print(result)
+        
+        # tech_evaluations에서 첫 번째 결과 반환
+        tech_evaluations = result.get("tech_evaluations", [])
+        
+        if not tech_evaluations:
+            # 평가 결과가 없을 경우 기본값 반환
+            return {
+                "company_name": self.startup_names[0] if self.startup_names else "Unknown",
+                "category_scores": {
+                    "innovation": 0,
+                    "completeness": 0,
+                    "competitiveness": 0,
+                    "patent": 0,
+                    "scalability": 0
+                },
+                "technology_score": 0,
+                "technology_analysis_basis": "평가 실패: 결과 없음"
+            }
+        
+        return tech_evaluations[0]
