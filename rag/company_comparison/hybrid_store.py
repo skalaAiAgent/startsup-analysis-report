@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
+from langchain_ollama import OllamaEmbeddings
 
 try:
     from chromadb import PersistentClient
@@ -23,10 +23,10 @@ def _tokenize(text: str) -> List[str]:
 
 
 class HybridStore:
-    """BM25 + Chroma hybrid retriever with HuggingFace embeddings.
+    """BM25 + Chroma hybrid retriever with Ollama embeddings.
 
     - Stores evidence chunks in both BM25 and Chroma with shared ids/metadata.
-    - Embeddings: jinaai/jina-embeddings-v2-base-ko (normalized).
+    - Embeddings: nomic-embed-text via Ollama.
     - Search: Reciprocal Rank Fusion (RRF) + optional lambda-weighted sum of normalized scores.
     - No SQLite; all evidence is from PDF text chunks.
     """
@@ -55,7 +55,7 @@ class HybridStore:
             self._coll = self._client.create_collection(name=self.collection_name)
 
         # Embedding model (lazy)
-        self._model: Optional[SentenceTransformer] = None
+        self._embeddings: Optional[OllamaEmbeddings] = None
         
         # 기존 데이터 로드 (BM25용)
         self._load_existing_data()
@@ -87,26 +87,35 @@ class HybridStore:
     # -------------------------------
     # Embedding
     # -------------------------------
-    def _ensure_model(self) -> SentenceTransformer:
-        if self._model is None:
-            print("🔄 임베딩 모델 로딩 중: jhgan/ko-sroberta-multitask")
-            self._model = SentenceTransformer("jhgan/ko-sroberta-multitask")
+    def _ensure_embeddings(self) -> OllamaEmbeddings:
+        """Ollama 임베딩 모델 초기화 (lazy loading)"""
+        if self._embeddings is None:
+            print("🔄 임베딩 모델 로딩 중: nomic-embed-text (Ollama)")
+            self._embeddings = OllamaEmbeddings(model="nomic-embed-text")
             print("✅ 임베딩 모델 로드 완료")
-        return self._model
+        return self._embeddings
 
     def _embed(self, texts: List[str]) -> List[List[float]]:
-        """Encode texts with SentenceTransformers, normalized embeddings."""
+        """Encode texts with Ollama embeddings."""
         if not texts:
             return []
-        model = self._ensure_model()
-        vecs = model.encode(
-            texts,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-            batch_size=32,
-            show_progress_bar=True,
-        )
-        return vecs.tolist()
+        embeddings = self._ensure_embeddings()
+        
+        # OllamaEmbeddings는 embed_documents 메서드 사용
+        print(f"🔄 임베딩 생성 중... ({len(texts)}개 문서)")
+        vecs = embeddings.embed_documents(texts)
+        
+        # 정규화 (Ollama는 자동으로 정규화되지 않을 수 있음)
+        normalized_vecs = []
+        for vec in vecs:
+            vec_array = np.array(vec)
+            norm = np.linalg.norm(vec_array)
+            if norm > 0:
+                normalized_vecs.append((vec_array / norm).tolist())
+            else:
+                normalized_vecs.append(vec)
+        
+        return normalized_vecs
 
     # -------------------------------
     # Indexing
@@ -176,8 +185,16 @@ class HybridStore:
             idx = np.argsort(scores)[::-1][: max(1, k_bm25)]
             bm25_pairs = [(self._bm25_ids[i], float(scores[i])) for i in idx]
 
-        # Vector via Chroma
-        q_vec = self._embed([query])[0]
+        # Vector via Chroma with Ollama
+        embeddings = self._ensure_embeddings()
+        q_vec = embeddings.embed_query(query)
+        
+        # 정규화
+        q_vec_array = np.array(q_vec)
+        q_vec_norm = np.linalg.norm(q_vec_array)
+        if q_vec_norm > 0:
+            q_vec = (q_vec_array / q_vec_norm).tolist()
+        
         try:
             out = self._coll.query(
                 query_embeddings=[q_vec],
