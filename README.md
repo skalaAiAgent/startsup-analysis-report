@@ -39,7 +39,7 @@
 
 ## Architecture
 
-<img width="456" height="605" alt="Image" src="https://github.com/user-attachments/assets/b9ac9198-223f-40e7-8e1a-2f21c345ee53" />
+<img width="456" height="610" alt="Image" src="https://github.com/user-attachments/assets/caf1978d-acdc-47ca-bcd4-cd27b78d9691" />
 
 ---
 
