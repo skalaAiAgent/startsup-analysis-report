@@ -1,0 +1,8 @@
+회사명: 트립소다
+분석 일시: 2025-10-20 13:15:40
+판단 결과: ACCEPT
+
+[ComparisonAgent + JudgeAgent 테스트]
+- Market State: None (테스트에서 스킵)
+- Tech State: None (테스트에서 스킵)
+- Comparison State: 실행됨
