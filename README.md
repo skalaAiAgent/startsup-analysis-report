@@ -45,13 +45,11 @@
 
 ## Agents
 
-| Agent                      | 역할                                 | 주요 입력                                            | 주요 출력                                                                                |
-| -------------------------- | ------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **TechSummaryAgent**       | 기술 문서 요약 및 **기술 점수 산출** | `기술요약_전체_기업_인터뷰.pdf`                      | `company_name`<br>`category_scores`<br>`technology_score`<br>`technology_analysis_basis` |
-| **MarketEvaluationAgent**  | **시장성 평가**                      | `시장분석_스타트업_시장전략_및_생태계.pdf`           | `company_name`<br>`market_score`<br>`market_analysis_basis`                              |
-| **CompanyComparisonAgent** | **경쟁사 비교**                      | `기업비교.pdf`                                       | `company_name`<br>`competitor_score`<br>`competitor_analysis_basis`                      |
-| **Judge_Agent**            | **투자 판단 여부 판단**              | `company_name`<br>`market`<br>`tech`<br>`comparison` | `decision`<br>`reason`<br>`score`                                                        |
-| **Report_Agent**           | **최종 보고서 생성**                 | `WorkflowState.judgment == True`<br>`FinalState`     | `WorkflowState.report_path`                                                              |
+| Agent                      | 역할                                 | 주요 입력                                  | 주요 출력                                                                                |
+| -------------------------- | ------------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **TechSummaryAgent**       | 기술 문서 요약 및 **기술 점수 산출** | `기술요약_전체_기업_인터뷰.pdf`            | `company_name`<br>`category_scores`<br>`technology_score`<br>`technology_analysis_basis` |
+| **MarketEvaluationAgent**  | **시장성 평가**                      | `시장분석_스타트업_시장전략_및_생태계.pdf` | `company_name`<br>`market_score`<br>`market_analysis_basis`                              |
+| **CompanyComparisonAgent** | **경쟁사 비교**                      | `기업비교.pdf`                             | `company_name`<br>`competitor_score`<br>`competitor_analysis_basis`                      |
 
 ---
 
