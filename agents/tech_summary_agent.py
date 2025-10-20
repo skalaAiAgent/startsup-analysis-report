@@ -1,4 +1,4 @@
- # 기술 문서 요약 및 핵심 기술 도출을 수행하는 Agentimport os
+# tech state # 기술 문서 요약 및 핵심 기술 도출을 수행하는 Agentimport os
 from typing import TypedDict, List, Dict, Annotated
 from operator import add
 from pathlib import Path
@@ -42,6 +42,7 @@ class TechState(TypedDict):
     vectorstore_ready: bool  # VectorStore 준비 완료 여부
     #
 
+class Tech_functions():
     def load_pdf_documents(pdf_dir: Path) -> List[Document]:
         """PDF 문서들을 로드하고 청킹"""
         all_documents = []
@@ -189,98 +190,100 @@ class TechState(TypedDict):
         
         return result_text
     
-    import os.path
-    import shutil
+    def initialize_vectorstore():
+        """ChromaDB 벡터스토어 초기화 및 EnsembleRetriever 구성"""
+        import os.path
+        import shutil
 
-    # ====== 설정 옵션 ======
-    FORCE_REBUILD = False  # True로 설정하면 기존 DB 삭제하고 재생성
-    # =======================
+        # ====== 설정 옵션 ======
+        FORCE_REBUILD = False  # True로 설정하면 기존 DB 삭제하고 재생성
+        # =======================
 
-    CHROMA_PERSIST_DIR = "../rag/tech/chroma_db"
-    CHROMA_COLLECTION_NAME = "startup_tech_db"
+        CHROMA_PERSIST_DIR = "../rag/tech/chroma_db"
+        CHROMA_COLLECTION_NAME = "startup_tech_db"
 
-    # 강제 재생성 옵션이 활성화된 경우
-    if FORCE_REBUILD and os.path.exists(CHROMA_PERSIST_DIR):
-        print("⚠️ FORCE_REBUILD=True: 기존 VectorStore를 삭제합니다...")
-        shutil.rmtree(CHROMA_PERSIST_DIR)
-        print("✓ 삭제 완료\n")
+        # 강제 재생성 옵션이 활성화된 경우
+        if FORCE_REBUILD and os.path.exists(CHROMA_PERSIST_DIR):
+            print("⚠️ FORCE_REBUILD=True: 기존 VectorStore를 삭제합니다...")
+            shutil.rmtree(CHROMA_PERSIST_DIR)
+            print("✓ 삭제 완료\n")
 
-    # 이미 ChromaDB가 존재하는지 확인
-    if os.path.exists(CHROMA_PERSIST_DIR) and os.path.isdir(CHROMA_PERSIST_DIR):
+        # 이미 ChromaDB가 존재하는지 확인
+        if os.path.exists(CHROMA_PERSIST_DIR) and os.path.isdir(CHROMA_PERSIST_DIR):
+            print("=" * 60)
+            print("📂 기존 VectorStore 발견!")
+            print("=" * 60)
+            print("저장된 임베딩 데이터를 로드합니다 (임베딩 생성 생략)...\n")
+            
+            # 기존 ChromaDB 로드 (PDF 로드 및 임베딩 생성 생략)
+            vectorstore = Chroma(
+                collection_name=CHROMA_COLLECTION_NAME,
+                embedding_function=embeddings,
+                persist_directory=CHROMA_PERSIST_DIR
+            )
+            
+            print(f"✓ VectorStore 로드 완료!")
+            
+            # PDF 문서도 로드 (BM25용으로 필요)
+            print("\nPDF 문서 로드 중 (BM25 인덱스용)...")
+            pdf_documents = load_pdf_documents(PDF_DATA_PATH)
+            
+        else:
+            print("=" * 60)
+            print("🆕 기존 VectorStore 없음 - 새로 생성")
+            print("=" * 60)
+            print("임베딩 생성 중 (처음 실행 시 시간 소요)...\n")
+            
+            # PDF 문서 로드
+            print("PDF 문서 로드 중...")
+            pdf_documents = load_pdf_documents(PDF_DATA_PATH)
+            
+            # ChromaDB 벡터스토어 생성
+            print("\nVectorStore 생성 중 (임베딩 생성 - 수 분 소요 가능)...")
+            vectorstore = Chroma.from_documents(
+                documents=pdf_documents,
+                embedding=embeddings,
+                collection_name=CHROMA_COLLECTION_NAME,
+                persist_directory=CHROMA_PERSIST_DIR
+            )
+            
+            print("✓ VectorStore 생성 완료!")
+
+        # ========== EnsembleRetriever 구성 ==========
+        print("\n" + "=" * 60)
+        print("🔧 EnsembleRetriever 구성 중...")
         print("=" * 60)
-        print("📂 기존 VectorStore 발견!")
-        print("=" * 60)
-        print("저장된 임베딩 데이터를 로드합니다 (임베딩 생성 생략)...\n")
-        
-        # 기존 ChromaDB 로드 (PDF 로드 및 임베딩 생성 생략)
-        vectorstore = Chroma(
-            collection_name=CHROMA_COLLECTION_NAME,
-            embedding_function=embeddings,
-            persist_directory=CHROMA_PERSIST_DIR
+
+        # 1. BM25Retriever 생성 (키워드 기반)
+        bm25_retriever = BM25Retriever.from_documents(pdf_documents)
+        bm25_retriever.k = 5  # 상위 5개 문서 반환
+
+        print(f"✓ BM25Retriever 생성 완료 (k={bm25_retriever.k})")
+
+        # 2. Semantic Retriever 생성 (벡터 기반)
+        semantic_retriever = vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 5}
         )
-        
-        print(f"✓ VectorStore 로드 완료!")
-        
-        # PDF 문서도 로드 (BM25용으로 필요)
-        print("\nPDF 문서 로드 중 (BM25 인덱스용)...")
-        pdf_documents = load_pdf_documents(PDF_DATA_PATH)
-        
-    else:
-        print("=" * 60)
-        print("🆕 기존 VectorStore 없음 - 새로 생성")
-        print("=" * 60)
-        print("임베딩 생성 중 (처음 실행 시 시간 소요)...\n")
-        
-        # PDF 문서 로드
-        print("PDF 문서 로드 중...")
-        pdf_documents = load_pdf_documents(PDF_DATA_PATH)
-        
-        # ChromaDB 벡터스토어 생성
-        print("\nVectorStore 생성 중 (임베딩 생성 - 수 분 소요 가능)...")
-        vectorstore = Chroma.from_documents(
-            documents=pdf_documents,
-            embedding=embeddings,
-            collection_name=CHROMA_COLLECTION_NAME,
-            persist_directory=CHROMA_PERSIST_DIR
+
+        print(f"✓ SemanticRetriever 생성 완료 (k=5)")
+
+        # 3. EnsembleRetriever로 결합
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[bm25_retriever, semantic_retriever],
+            weights=[0.5, 0.5]  # 동일한 가중치
         )
-        
-        print("✓ VectorStore 생성 완료!")
 
-    # ========== EnsembleRetriever 구성 ==========
-    print("\n" + "=" * 60)
-    print("🔧 EnsembleRetriever 구성 중...")
-    print("=" * 60)
+        print(f"✓ EnsembleRetriever 생성 완료 (weights=[0.5, 0.5])")
 
-    # 1. BM25Retriever 생성 (키워드 기반)
-    bm25_retriever = BM25Retriever.from_documents(pdf_documents)
-    bm25_retriever.k = 5  # 상위 5개 문서 반환
-
-    print(f"✓ BM25Retriever 생성 완료 (k={bm25_retriever.k})")
-
-    # 2. Semantic Retriever 생성 (벡터 기반)
-    semantic_retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 5}
-    )
-
-    print(f"✓ SemanticRetriever 생성 완료 (k=5)")
-
-    # 3. EnsembleRetriever로 결합
-    ensemble_retriever = EnsembleRetriever(
-        retrievers=[bm25_retriever, semantic_retriever],
-        weights=[0.5, 0.5]  # 동일한 가중치
-    )
-
-    print(f"✓ EnsembleRetriever 생성 완료 (weights=[0.5, 0.5])")
-
-    print(f"\n{'='*60}")
-    print(f"✅ 초기화 완료")
-    print(f"{'='*60}")
-    print(f"PDF 문서 수: {len(pdf_documents)}개")
-    print(f"컬렉션 이름: {CHROMA_COLLECTION_NAME}")
-    print(f"저장 위치: {CHROMA_PERSIST_DIR}")
-    print(f"Retriever 구성: BM25 (50%) + Semantic (50%)")
-    print(f"{'='*60}\n")
+        print(f"\n{'='*60}")
+        print(f"✅ 초기화 완료")
+        print(f"{'='*60}")
+        print(f"PDF 문서 수: {len(pdf_documents)}개")
+        print(f"컬렉션 이름: {CHROMA_COLLECTION_NAME}")
+        print(f"저장 위치: {CHROMA_PERSIST_DIR}")
+        print(f"Retriever 구성: BM25 (50%) + Semantic (50%)")
+        print(f"{'='*60}\n")
 
     def select_next_startup(state: TechState) -> TechState:
         """다음 평가할 스타트업 선택"""
@@ -477,22 +480,22 @@ class TechState(TypedDict):
             return "end"  # 모든 평가 완료
 
 # StateGraph 생성
-workflow = StateGraph(TechState)
-
+tech_workflow = StateGraph(TechState)
+    
 # 노드 추가
-workflow.add_node("select_startup", select_next_startup)
-workflow.add_node("crawl_web", crawl_web_data)
-workflow.add_node("retrieve_info", retrieve_tech_info)
-workflow.add_node("evaluate", evaluate_technology)
+tech_workflow.add_node("select_startup", select_next_startup)
+tech_workflow.add_node("crawl_web", crawl_web_data)
+tech_workflow.add_node("retrieve_info", retrieve_tech_info)
+tech_workflow.add_node("evaluate", evaluate_technology)
 
 # 엣지 설정
-workflow.set_entry_point("select_startup")
-workflow.add_edge("select_startup", "crawl_web")
-workflow.add_edge("crawl_web", "retrieve_info")
-workflow.add_edge("retrieve_info", "evaluate")
+tech_workflow.set_entry_point("select_startup")
+tech_workflow.add_edge("select_startup", "crawl_web")
+tech_workflow.add_edge("crawl_web", "retrieve_info")
+tech_workflow.add_edge("retrieve_info", "evaluate")
 
 # 조건부 엣지 (평가 완료 후 다음 스타트업으로 이동 또는 종료)
-workflow.add_conditional_edges(
+tech_workflow.add_conditional_edges(
     "evaluate",
     check_completion,
     {
@@ -502,7 +505,7 @@ workflow.add_conditional_edges(
 )
 
 # 그래프 컴파일
-app = workflow.compile()
+app = tech_workflow.compile()
 
 print("\n워크플로우 구성 완료!")
 print("순서: select_startup -> crawl_web -> retrieve_info -> evaluate -> [반복 or 종료]")
