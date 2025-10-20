@@ -10,11 +10,6 @@ from typing import TypedDict, List, Dict
 import json
 import time
 
-# 프로젝트 루트를 Python 경로에 추가
-ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
-
 from langchain_openai import ChatOpenAI
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -52,7 +47,7 @@ class TechAgent:
         result = agent.get_tech_result()
     """
 
-    def __init__(self, startups_to_evaluate: str | List[str], pdf_data_path: str = None):
+    def __init__(self, startups_to_evaluate: str | List[str], pdf_data_path: str = "../data"):
         """
         Args:
             startups_to_evaluate: 평가할 스타트업 이름 (문자열 또는 리스트)
@@ -76,7 +71,7 @@ class TechAgent:
         self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
         # ChromaDB 경로
-        self.chroma_persist_dir = os.path.join(ROOT_DIR, "rag", "tech", "chroma_db")
+        self.chroma_persist_dir = "../rag/tech"
         self.chroma_collection_name = "startup_tech_db"
 
         # VectorStore 및 Retriever 초기화
@@ -141,7 +136,6 @@ class TechAgent:
                 persist_directory=self.chroma_persist_dir
             )
             print("✓ VectorStore 로드 완료\n")
-
             print("PDF 문서 로드 중 (BM25 인덱스용)...")
             self.pdf_documents = self._load_pdf_documents()
         else:
@@ -457,15 +451,20 @@ class TechAgent:
         print("\n워크플로우 구성 완료!")
         print("순서: select_startup -> crawl_web -> retrieve_info -> evaluate -> [반복 or 종료]\n")
 
-    def get_tech_result(self) -> Dict:
+    def get_tech_result(self) -> TechState:
         """
         기술 평가 실행 및 결과 반환
 
         Returns:
-            평가 결과 딕셔너리
+            TechState: 전체 평가 상태 딕셔너리
             {
+                "startup_names": [...],
+                "current_startup": "...",
+                "web_data": "...",
+                "retrieved_docs": [...],
                 "tech_evaluations": [...],  # 각 스타트업별 평가 결과
-                "summary": {...}  # 요약 통계
+                "processing_index": int,
+                "vectorstore_ready": bool
             }
         """
         # VectorStore 초기화 (아직 안 되어 있으면)
@@ -499,6 +498,13 @@ class TechAgent:
         print(f"전체 평가 완료")
         print(f"최종 평가 결과 수: {len(result['tech_evaluations'])}개")
         print(f"{'='*60}\n")
+        # TechState 전체를 반환
+        return result
 
-
-        return result["tech_evaluations"].pop(), 
+# 사용 예시
+if __name__ == "__main__":
+    # 단일 기업 평가
+    company_name = "어딩"
+    agent = TechAgent(startups_to_evaluate=company_name)
+    result = agent.get_tech_result()
+    print(result)
