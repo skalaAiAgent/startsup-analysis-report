@@ -11,9 +11,9 @@ load_dotenv()
 from langgraph.graph import StateGraph, END
 
 # Agent import
-from agents.market_agent import MarketAgent
+from agents.market_evaluation_agent import MarketAgent
 from agents.tech_agent import TechAgent
-from agents.comparison_agent import ComparisonAgent
+from agents.company_comparison_agent import ComparisonAgent
 from agents.judge_agent import JudgeAgent
 from agents.report_agent import ReportAgent
 

@@ -45,7 +45,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 try:
     # LangChain 0.2 계열에서 제공하는 shim
-    from langchain_core.pydantic_v1 import BaseModel, Field, validator
+    from pydantic import BaseModel, Field, validator
 except Exception:
     # 구버전 환경 호환
     from pydantic import BaseModel, Field, validator
@@ -56,17 +56,8 @@ from langchain_chroma import Chroma
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_classic.retrievers import EnsembleRetriever        # langchain 0.2.x
 
-# EnsembleRetriever import: handle version differences
-try:
-    from langchain.retrievers import EnsembleRetriever            # langchain 0.2.x
-except Exception:
-    try:
-        from langchain.retrievers.ensemble import EnsembleRetriever  # 일부 배포
-    except Exception:
-        raise ImportError(
-            "EnsembleRetriever not found. Install a compatible LangChain (e.g., langchain==0.2.16)."
-        )
 
 from langgraph.graph import StateGraph, END
 

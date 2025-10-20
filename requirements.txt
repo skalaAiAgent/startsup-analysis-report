@@ -2,6 +2,7 @@ langchain
 langchain-core
 langchain-community
 langchain-openai
+langchain_chroma
 langgraph
 chromadb
 rank-bm25
