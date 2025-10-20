@@ -14,3 +14,6 @@ python-dotenv
 pypdf
 openai
 tavily-python
+markdown
+xhtml2pdf
+reportlab

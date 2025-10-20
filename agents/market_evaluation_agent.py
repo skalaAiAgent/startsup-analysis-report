@@ -89,7 +89,7 @@ class MarketAgent:
         self.collection_name = os.getenv("MARKET_COLLECTION", "market_index")
         self.chroma_persist_dir = os.getenv("MARKET_CHROMA_DIR", "./rag/market/chroma")
         self.embedding_model_name = os.getenv("MARKET_EMBED_MODEL", "nomic-embed-text")
-        self.llm_model_name = os.getenv("MARKET_LLM_MODEL", "gpt-4o-mini")
+        self.llm_model_name = os.getenv("MARKET_LLM_MODEL", "gpt-4o")
         self.bm25_k = int(os.getenv("MARKET_BM25_K", "4"))
         self.vs_k = int(os.getenv("MARKET_VS_K", "4"))
         self.use_mmr = os.getenv("MARKET_USE_MMR", "1") == "1"

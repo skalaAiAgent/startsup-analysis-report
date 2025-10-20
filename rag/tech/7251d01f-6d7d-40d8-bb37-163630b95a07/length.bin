@@ -1,1 +1,1 @@
-invalid type: string "[TABLE END]\n[ANALYSIS START]\n리브애니웨어의 투자 유치 분석: 단계별 투자 이력은 성장 신뢰도를 높이며, 투자자 다변화는 후속 조달과\nGTM 가속에 유리합니다.\n[ANALYSIS END]\n[SECTION START] 리브애니웨어 | 소비자 성별\n[TABLE START]\n회사명\n연령대\n남성(%)\n여성(%)\n합계(%)\n리브애니웨어\nn2024-08\nn
+invalid type: string "[ANALYSIS END]\n[SECTION START] 리브애니웨어 | MUV 데이터\n[TABLE START]\n회사명\n월\n고유 방문자 수(MUV, 만)\n전월대비 성장률(%)\n리브애니웨어\n2025-04\n28.2\nnan\n리브애니웨어\n2025-05\n26.7\n-5.4\n리브애니웨어\n2025-06\n24.8\n-7.1\n리브애니웨어\n2025-07\n26.1\n5.2\n리브애니웨어\n2025-08\n26.6\n1.9\n리브애니웨어

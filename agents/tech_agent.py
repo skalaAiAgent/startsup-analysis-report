@@ -72,7 +72,7 @@ class TechAgent:
         root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
         
         # 모델 초기화
-        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
         self.embeddings = OllamaEmbeddings(model="nomic-embed-text")
 
         # ChromaDB 경로
@@ -314,7 +314,7 @@ class TechAgent:
 
             pdf_context = "\n\n".join([doc.page_content for doc in docs[:3]])
 
-            print(f"\nGPT-4o-mini를 사용하여 기술력 평가 중...")
+            print(f"\nGPT-4o를 사용하여 기술력 평가 중...")
             print(f"  현재까지 평가 완료: {len(existing_evaluations)}개")
 
             existing_scores_constraint = ""

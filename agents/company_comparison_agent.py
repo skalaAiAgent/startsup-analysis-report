@@ -62,7 +62,7 @@ class ComparisonAgent:
         self.company_name = company_name or "Unknown"
         
         # LLM 초기화
-        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+        self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
         
         # RAG 디렉토리 설정
         rag_dir = os.path.join(

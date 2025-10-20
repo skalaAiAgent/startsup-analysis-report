@@ -9,8 +9,8 @@ load_dotenv()
 
 # Agent import
 from agents.tech_agent import TechAgent
-from agents.judge_agent import JudgeAgent
-from agents.report_agent import ReportAgent
+from llm.judge_llm import JudgeLLM
+from llm.report_llm import ReportLLM
 
 # State import
 from state.tech_state import TechState
@@ -135,7 +135,7 @@ def judge_and_report(final_state: FinalState) -> dict:
     
     # 1. JudgeAgent 실행
     print(f"\n[JUDGE] {company_name} 보고서 생성 여부 판단 중...")
-    judge_agent = JudgeAgent(final_state=final_state)
+    judge_agent = JudgeLLM(final_state=final_state)
     judgment = judge_agent.should_generate_report()
     
     result = {
@@ -150,7 +150,7 @@ def judge_and_report(final_state: FinalState) -> dict:
         print(f"[JUDGE] {company_name} 판단 결과: ACCEPT (보고서 생성)")
         
         print(f"\n[REPORT] {company_name} 보고서 생성 중...")
-        report_agent = ReportAgent(final_state=final_state)
+        report_agent = ReportLLM(final_state=final_state)
         report_content = report_agent.generate_report()
         
         # 파일 저장

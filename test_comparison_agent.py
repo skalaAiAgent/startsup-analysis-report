@@ -12,7 +12,7 @@ from langgraph.graph import StateGraph, END
 
 # Agent import - ComparisonAgent와 JudgeAgent만 사용
 from agents.company_comparison_agent import ComparisonAgent
-from agents.judge_agent import JudgeAgent
+from llm.judge_llm import JudgeLLM
 
 # State import
 from state.comparison_state import ComparisonState
@@ -120,7 +120,7 @@ def judge_node(state: WorkflowState) -> WorkflowState:
         print(f"[JUDGE] {company_name} 보고서 생성 여부 판단 중...")
         print(f"[JUDGE] (참고: market=None, tech=None 상태)")
         
-        judge_agent = JudgeAgent(final_state=final_state)
+        judge_agent = JudgeLLM(final_state=final_state)
         judgment = judge_agent.should_generate_report()
         
         result = "ACCEPT" if judgment else "REJECT"

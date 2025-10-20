@@ -8,7 +8,7 @@ load_dotenv()
 
 # Agent import
 from agents.market_evaluation_agent import MarketAgent
-from agents.judge_agent import JudgeAgent
+from llm.judge_llm import JudgeLLM
 
 # State import
 from state.market_state import MarketState
@@ -112,7 +112,7 @@ def judge_and_save(final_state: FinalState) -> dict:
     
     # 1. JudgeAgent 실행
     print(f"\n[JUDGE] {company_name} 보고서 생성 여부 판단 중...")
-    judge_agent = JudgeAgent(final_state=final_state)
+    judge_agent = JudgeLLM(final_state=final_state)
     judgment = judge_agent.should_generate_report()
     
     result = {
