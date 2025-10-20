@@ -29,15 +29,25 @@
 
 ---
 
+## Architecture
+
+<img width="456" height="605" alt="Image" src="https://github.com/user-attachments/assets/b9ac9198-223f-40e7-8e1a-2f21c345ee53" />
+
+- 3개 핵심 Agent는 **병렬적으로 실행**되어 개별 평가 결과를 반환합니다.
+- `Judge_Agent`는 이 결과들을 **수집·통합하여 FinalState를 생성**하고, 이에 따라 **보고서 생성(적격) / 생성 보류(비적격)** 를 결정합니다.
+- 유망(적격)일 때만 `Report_Agent`에 FinalState가 전달되어 **최종 보고서**가 생성됩니다.
+
+---
+
 ## Tech Stack
 
 | Category         | Details                                                                                     |
 | ---------------- | ------------------------------------------------------------------------------------------- |
 | **Framework**    | LangGraph, LangChain, Python                                                                |
 | **LLM**          | OpenAI `gpt-4o-mini`                                                                        |
-| **Retrieval**    | Hybrid Retrieval (Chroma + BM25)                                                            |
+| **Retrieval**    | Hybrid Retrieval (Semantic + BM25)                                                          |
 | **Embedding**    | `OllamaEmbeddings(model="nomic-embed-text")`                                                |
-| **Vector Store** | ChromaDB (`.chroma/`)                                                                       |
+| **Vector Store** | ChromaDB                                                                                    |
 | **Data Source**  | `기술요약_전체_기업_인터뷰.pdf`, `시장분석_스타트업_시장전략_및_생태계.pdf`, `기업비교.pdf` |
 
 ---
@@ -121,20 +131,51 @@
 
 ---
 
-## Architecture
-
-<img width="456" height="605" alt="Image" src="https://github.com/user-attachments/assets/b9ac9198-223f-40e7-8e1a-2f21c345ee53" />
-
-- 3개 핵심 Agent는 **병렬적으로 실행**되어 개별 평가 결과를 반환합니다.
-- `Judge_Agent`는 이 결과들을 **수집·통합하여 FinalState를 생성**하고, 이에 따라 **보고서 생성(적격) / 생성 보류(비적격)** 를 결정합니다.
-- 유망(적격)일 때만 `Report_Agent`에 FinalState가 전달되어 **최종 보고서**가 생성됩니다.
-
----
-
 ## Directory Structure
 
 ```
-(비워 둠 — 실제 디렉토리 고정 후 기입 예정)
+startsup-analysis-report/
+│
+├─ agents/
+│   ├─ tech_summary_agent.py          # 기술 문서 요약 및 핵심 기술 도출 Agent
+│   ├─ market_evaluation_agent.py     # 시장성 평가 Agent (시장 트렌드/수요 분석)
+│   └─ company_comparison_agent.py    # 기업 간 비교 분석 Agent (재무·경영 지표 기반)
+│
+├─ rag/
+│   ├─ tech/                          # 기술 관련 RAG 파이프라인
+│   │   ├─ init.py
+│   │   └─ (기술 문서 임베딩 및 인덱싱 관련 모듈 예정)
+│   │
+│   ├─ market/                        # 시장 분석용 RAG 파이프라인
+│   │   ├─ init.py
+│   │   └─ (시장 동향·수요 분석 데이터 인덱싱 모듈)
+│   │
+│   ├─ company_comparison/            # 기업 비교용 RAG 파이프라인
+│   │   ├─ init.py
+│   │   ├─ build_index.py             # PDF 로드 및 ChromaDB 인덱스 구축
+│   │   ├─ hybrid_store.py            # BM25 + Embedding 하이브리드 검색 구현
+│   │   ├─ description.txt            # 해당 인덱스 목적 및 설명 파일
+│   │   └─ .chroma/                   # 기업비교용 ChromaDB 벡터 저장 폴더
+│   │
+│   └─ init.py
+│
+├─ state/                             # LangGraph에서 각 Agent별 상태 관리 클래스
+│   ├─ init.py
+│   ├─ ComparisonState.py             # 기업 비교 Agent의 상태 정의 (startup_name, score, etc.)
+│   ├─ MarketState.py                 # 시장 평가 Agent의 상태 정의
+│   ├─ tech_state.py                  # 기술 요약 Agent의 상태 정의
+│   ├─ judge_state.py                 # 종합 판단 및 평가 점수 통합용 State
+│   ├─ workflow_state.py              # 전체 워크플로우 관리용 State
+│   └─ final_state.py                 # 최종 통합 결과 (report generation 등)
+│
+├─ data/
+│   ├─ 기업비교.pdf                   # 기업 비교용 PDF (재무/투자/소비자 데이터 포함)
+│   ├─ 여행업_동향.pdf               # 시장 분석용 PDF (여행 산업 트렌드)
+│   └─ (추가 기술 관련 리포트 예정)
+│
+├─ main.py                            # LangGraph 실행 진입점 (노드·엣지 정의 및 invoke 실행)
+├─ .gitignore                         # 크로마DB, 캐시, 가상환경 제외 설정
+└─ README.md                          # 프로젝트 개요, 실행 방법, Agent 설명
 ```
 
 ---
