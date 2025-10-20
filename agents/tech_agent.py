@@ -502,19 +502,3 @@ class TechAgent:
 
 
         return result["tech_evaluations"].pop(), 
-
-# 사용 예시
-if __name__ == "__main__":
-    # 단일 기업 평가
-    company_name = "어딩"
-    agent = TechAgent(startups_to_evaluate=company_name)
-    result = agent.get_tech_result()
-
-    # 결과 출력
-    for eval_data in result["tech_evaluations"]:
-        print(f"\n{'='*60}")
-        print(f"{eval_data['startup_name']}")
-        print(f"{'='*60}")
-        print(f"기술 점수: {eval_data['기술_점수']}/100점")
-        print(f"\n분석 근거:")
-        print(f"{eval_data['기술_분석_근거']}")

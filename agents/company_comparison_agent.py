@@ -15,7 +15,7 @@ ROOT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from state.ComparisonState import ComparisonState
+from state.comparison_state import ComparisonState
 from rag.company_comparison.hybrid_store import HybridStore
 
 
