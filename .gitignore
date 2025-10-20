@@ -9,3 +9,5 @@ __pycache__/
 # ChromaDB
 chroma_db/
 .chroma/
+
+rag/company_comparison/.chroma/
