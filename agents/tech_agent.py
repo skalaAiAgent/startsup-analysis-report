@@ -67,8 +67,9 @@ class TechAgent:
         else:
             self.startup_names = startups_to_evaluate
 
-        # 프로젝트 루트 경로 계산
-        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+        # 프로젝트 루트 경로 계산 (agents 폴더 기준)
+        # agents/tech_agent.py -> agents -> root
+        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
         
         # 모델 초기화
         self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
@@ -97,7 +98,8 @@ class TechAgent:
         BM25 Retriever용 PDF 문서 로드
         (기존 ChromaDB 인덱스에서 데이터를 읽어오지 않고, PDF를 직접 로드)
         """
-        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+        # agents/tech_agent.py -> agents -> root
+        root = os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir))
         data_dir = os.path.join(root, "data")
         
         # indexer와 동일한 파일 목록
@@ -289,7 +291,7 @@ class TechAgent:
             query = f"{startup_name} AI 기술 혁신 스타트업 투자 평가 경쟁력"
 
             print(f"\nPDF 문서에서 관련 정보 검색 중...")
-            retrieved_docs = self.ensemble_retriever.get_relevant_documents(query)
+            retrieved_docs = self.ensemble_retriever.invoke(query)
 
             state["retrieved_docs"] = retrieved_docs
             print(f"검색 완료: {len(retrieved_docs)}개 문서 검색됨")
